@@ -72,7 +72,7 @@ export class ForwardOrigin {
 // temp
 type User = {
     id: number;
-};
+} | null;
 
 export class GeneralMessage {
     protected _msg: { [field: string]: any };
@@ -81,7 +81,7 @@ export class GeneralMessage {
     protected _by: User;
     protected _target: User = null;
     protected _chat_id: number;
-    protected _forward_origin: ForwardOrigin;
+    protected _forward_origin: ForwardOrigin | null;
     protected _is_replacement: boolean;
 
     constructor(data: { [field: string]: any }) {
@@ -89,7 +89,7 @@ export class GeneralMessage {
         this._id = +this._msg?.message_id;
         this._text = this._msg?.text;
 
-        this._by = undefined; // Edit This: VIPAccount.Get(this._msg?.chat?.id)
+        this._by = null; // Edit This: VIPAccount.Get(this._msg?.chat?.id)
         this._chat_id = +this._msg?.chat?.id
         this._forward_origin = this._msg.forward_origin ? new ForwardOrigin(this._msg.forward_origin) : null;
         this._is_replacement = false;
@@ -131,7 +131,7 @@ export class GeneralMessage {
         this._chat_id = value;
     }
 
-    get forwardOrigin(): ForwardOrigin {
+    get forwardOrigin(): ForwardOrigin | null{
         return this._forward_origin;
     }
 
@@ -147,12 +147,12 @@ export class GeneralMessage {
         this._is_replacement = false;
     }
 
-    send(targetId: number = this.target.id): any {
-        if(targetId !== this.target.id) {
+    send(targetId: number = this.target?.id ?? 0): any {
+        if(targetId !== this.target?.id) {
             // find target
         }
     }
-    
+
 }
 
 export class TelegramCallbackQuery extends GeneralMessage {
@@ -192,11 +192,11 @@ export class TelegramCallbackQuery extends GeneralMessage {
 }
 
 export type MessageOptions = {
-    senderId?: number, 
-    targetId?: number, 
+    senderId?: number,
+    targetId?: number,
     messageId?: number,
     isReplacement?: boolean
-    forwardOrigin?: ForwardOrigin
+    forwardOrigin?: ForwardOrigin | null
 }
 
 export class TextMessage extends GeneralMessage {
@@ -204,7 +204,7 @@ export class TextMessage extends GeneralMessage {
     constructor(targetChatId: number, text: string, options: MessageOptions) {
         super({
             message: {
-                message_id: +options?.messageId,
+                message_id: options?.messageId ?? 0,
                 text,
                 chat: {
                     id: targetChatId
@@ -213,16 +213,16 @@ export class TextMessage extends GeneralMessage {
         });
         this._by = null; // TODO: use options.senderId, find user from database model
         this._target = null; // TODO: use options.targetId, find //
-        this._forward_origin = options?.forwardOrigin;
-        this._is_replacement = options?.isReplacement;
+        this._forward_origin = options?.forwardOrigin ?? null;
+        this._is_replacement = options?.isReplacement ?? false;
 
     }
 
-    override send(targetId: number = this.target.id) {
+    override send(targetId: number = this.target?.id ?? 0) {
         super.send(targetId);
-        // TODO: 
+        // TODO:
     }
-    
+
 }
 
 export class PhotoMessage extends GeneralMessage {
@@ -233,12 +233,12 @@ export class PhotoMessage extends GeneralMessage {
     get photoId(): string {
         return this._photo_id;
     }
-    
-    override send(targetId: number = this.target.id) {
+
+    override send(targetId: number = this.target?.id ?? 0) {
         super.send(targetId);
-        // TODO: 
+        // TODO:
     }
-    
+
 }
 
 export class VoiceMessage extends GeneralMessage {
@@ -262,11 +262,11 @@ export class VideoMessage extends GeneralMessage {
         return this._video_id;
     }
 
-    override send(targetId: number = this.target.id) {
+    override send(targetId: number = this.target?.id ?? 0) {
         super.send(targetId);
-        // TODO: 
+        // TODO:
     }
-    
+
 }
 
 export class MusicMessage extends GeneralMessage {
@@ -278,9 +278,9 @@ export class MusicMessage extends GeneralMessage {
         return this._music_id;
     }
 
-    override send(targetId: number = this.target.id) {
+    override send(targetId: number = this.target?.id ?? 0) {
         super.send(targetId);
-        // TODO: 
+        // TODO:
     }
-    
+
 }

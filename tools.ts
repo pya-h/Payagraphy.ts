@@ -10,11 +10,11 @@ export class ParallelJob {
     // Define objects from this and use it in TelegramBot, it will does some parallel jobs in the bot by a specific interval [in minutes]
     constructor(interval: number, duty: Function, ...params: any[]) {
         this._lastAchievment = null;
-        this._lastDutyTime = null;
+        this._lastDutyTime = 0;
         this._running = false;
         this._dutyParameters = params;
     }
-        
+
     go(): ParallelJob {
         // Start running...
         this._lastDutyTime = Date.now();
