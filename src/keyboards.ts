@@ -185,22 +185,22 @@ export class InlineKeyboard extends Keyboard {
       );
 
     return {
-      inline_keyboard: this._keys.map((row) => {
-        return (Array.isArray(row) ? row : [row]).map((col) => {
-          return InlineKeyboard.MakeButtonStandard(col).asTelegramObject;
-        });
-      }),
+      inline_keyboard: this._keys.map((row) =>
+        (Array.isArray(row) ? row : [row]).map(
+          (col) => col instanceof InlineButton ? col.asTelegramObject : InlineKeyboard.MakeButtonStandard(col).asTelegramObject
+        )
+      ),
     };
   }
 
   static Arrange(buttons: TelegramKeyboardnPattern[], callbackAction: string) {
-    const keys = Array((buttons.length / 5) | 0)
+    const keys = Array(Math.ceil(buttons.length / 5))
       .fill(0)
       .map((_, i: number) =>
         buttons.slice(i * 5, (i + 1) * 5).map(
           (btn) =>
-            new InlineButton(btn.title(), {
-              callbackData: { a: callbackAction, v: btn.value() },
+            new InlineButton(btn.title, {
+              callbackData: { a: callbackAction, v: btn.value },
             })
         )
       );

@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "typescript": "^5.4.2"
+  },
+  "scripts": {
+    "start": "tsx ./src/index.ts",
+    "ts": "tsx ./test.ts"
+  },
+  "name": "payagraph",
+  "description": "Usefule module for implementing telegram bots and handling its events [converted and continued from http://github.com/pya-h/payagraph]",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "htttp://github.com/pya-h/payagraphyts.git"
+  },
+  "author": "thcpp",
+  "license": "ISC",
+  "devDependencies": {
+    "tsx": "^4.7.1"
+  }
+}
