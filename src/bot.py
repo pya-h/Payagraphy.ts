@@ -1,7 +1,6 @@
-from db.vip_models import VIPAccount
 import requests
 from tools.manuwriter import log
-from db.vip_models import UserStates
+from models.user import UserStates, User
 from typing import Callable, Dict, Union
 from tools.mathematix import minutes_to_timestamp
 from payagraph.containers import *
@@ -14,7 +13,7 @@ from payagraph.tools import ParallelJob
 
 
 class TelegramBotCore:
-    ''' Main and static part of the class; Can be used to create bots without using handler funcionalities; user state management, message and command check and all other stuffs are on developer. handle function has no use in this mode of bot development.'''
+    ''' Main and the very base of a telegram bot; with no helper method or handler; Can be used to create bots without using handler funcionalities; user state management, message and command check and all other stuffs are on developer. handle function has no use in this mode of bot development.'''
     def __init__(self, token: str, username: str, host_url: str, text_resources: dict, _main_keyboard: Dict[str, Keyboard]|Keyboard = None) -> None:
         self.token = token
         self.bot_api_url = f"https://api.telegram.org/bot{self.token}"
@@ -60,35 +59,6 @@ class TelegramBotCore:
         if response.status_code != 200:
             log(f"User-Responding Failure => status code:{response.status_code}\n\tChatId:{modified_message.by.chat_id}\nResponse text: {response.text}", category_name="VIP_FATAL")
         return response  # as dict
-
-
-    def get_telegram_link(self) -> str:
-        return f'https://t.me/{self.username}'
-
-    def text(self, text_key: str, language: str = 'fa') -> str:  # short for gettext
-        '''resource function: get an specific text from the texts_resources json loaded into bot object'''
-        try:
-            return self.text_resources[text_key][language]
-        except:
-            pass
-        return "پاسخ نامعلوم" if language == 'fa' else "Unknown response"
-
-    def keyword(self, keyword_name: str, language: str = None) -> dict|str :
-        '''resource function: get an specific keyword(words that when sent to the bot will run a special function) from the texts_resources json loaded into bot object'''
-        try:
-            keywords = self.text_resources['keywords']
-            return keywords[keyword_name] if not language else keywords[keyword_name][language]
-        except:
-            pass
-        return None
-
-    def cmd(self, command: str) -> str :
-        '''resource function: get an specific command(english keywords starting with '/' that will run a special function) from the texts_resources json loaded into bot object'''
-        try:
-            return self.text_resources['commands'][command]    
-        except:
-            pass
-        return None
 
 
 
@@ -154,7 +124,34 @@ class TelegramBot(TelegramBotCore):
         '''Bot being awake time, if the clock has not been stopped ofcourse'''
         return f'The bot\'s uptime is: {minutes_to_timestamp(self.clock.minutes_running())}'
 
+    def get_telegram_link(self) -> str:
+        return f'https://t.me/{self.username}'
 
+    def text(self, text_key: str, language: str = 'fa') -> str:  # short for gettext
+        '''resource function: get an specific text from the texts_resources json loaded into bot object'''
+        try:
+            return self.text_resources[text_key][language]
+        except:
+            pass
+        return "پاسخ نامعلوم" if language == 'fa' else "Unknown response"
+
+    def keyword(self, keyword_name: str, language: str = None) -> dict|str :
+        '''resource function: get an specific keyword(words that when sent to the bot will run a special function) from the texts_resources json loaded into bot object'''
+        try:
+            keywords = self.text_resources['keywords']
+            return keywords[keyword_name] if not language else keywords[keyword_name][language]
+        except:
+            pass
+        return None
+
+    def cmd(self, command: str) -> str :
+        '''resource function: get an specific command(english keywords starting with '/' that will run a special function) from the texts_resources json loaded into bot object'''
+        try:
+            return self.text_resources['commands'][command]    
+        except:
+            pass
+        return None
+    
     # Main Sections:
     def add_state_handler(self, handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]], state: UserStates|int):
         '''Add a handler for special states of user. Depending on the appliance and structure of the bot, it must have its own UserStates enum, that you must add handler for each value of the enum. States are useful when getting multiple inputs for a model, or when special actions must be taken other than normal handlers'''
@@ -199,7 +196,7 @@ class TelegramBot(TelegramBotCore):
     def handle(self, telegram_data: dict):
         '''determine what course of action to take based on the message sent to the bot by user. First command/message/state handler and middlewares and then call the handle with telegram request data.'''
         message: TelegramMessage | TelegramCallbackQuery = None
-        user: VIPAccount = None
+        user: User = None
         response: TelegramMessage| TelegramCallbackQuery = None
         keyboard: Keyboard | InlineKeyboard = None
         dont_use_main_keyboard: bool = False

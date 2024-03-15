@@ -83,6 +83,7 @@ export class GeneralMessage {
     protected _chat_id: number;
     protected _forward_origin: ForwardOrigin | null;
     protected _is_replacement: boolean;
+    protected _messageId?: number;
 
     constructor(data: { [field: string]: any }) {
         this._msg = data.message;
@@ -93,6 +94,8 @@ export class GeneralMessage {
         this._chat_id = +this._msg?.chat?.id
         this._forward_origin = this._msg.forward_origin ? new ForwardOrigin(this._msg.forward_origin) : null;
         this._is_replacement = false;
+        if(data.messageId)
+            this._messageId = data.messageId;
     }
 
     get id(): number {
@@ -139,6 +142,10 @@ export class GeneralMessage {
         return this._is_replacement;
     }
 
+    get messageId(): number {
+        return this.messageId;
+    }
+    
     replacement() {
         this._is_replacement = true;
     }
