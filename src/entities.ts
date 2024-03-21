@@ -3,6 +3,8 @@
 // from enum import Enum
 // from tools.mathematix import force_cast
 
+import { User } from "./models/user";
+
 enum ChatType {
     User = "user",
     Channel = "channel",
@@ -69,12 +71,8 @@ export class ForwardOrigin {
 
 }
 
-// temp
-type User = {
-    id: number;
-} | null;
 
-export class GeneralMessage {
+export class GenericMessage {
     protected _msg: { [field: string]: any };
     protected _id: number;
     protected _text: string;
@@ -162,7 +160,7 @@ export class GeneralMessage {
 
 }
 
-export class TelegramCallbackQuery extends GeneralMessage {
+export class TelegramCallbackQuery extends GenericMessage {
     private _data: string;
     private _action: string;
     private _value: string | number;
@@ -206,9 +204,9 @@ export type MessageOptions = {
     forwardOrigin?: ForwardOrigin | null
 }
 
-export class TextMessage extends GeneralMessage {
+export class TextMessage extends GenericMessage {
 
-    constructor(targetChatId: number, text: string, options: MessageOptions) {
+    constructor(targetChatId: number, text: string, options?: MessageOptions) {
         super({
             message: {
                 message_id: options?.messageId ?? 0,
@@ -232,7 +230,7 @@ export class TextMessage extends GeneralMessage {
 
 }
 
-export class PhotoMessage extends GeneralMessage {
+export class PhotoMessage extends GenericMessage {
     // TODO:
     private _photo_id: string; // telegram photo id
 
@@ -248,7 +246,7 @@ export class PhotoMessage extends GeneralMessage {
 
 }
 
-export class VoiceMessage extends GeneralMessage {
+export class VoiceMessage extends GenericMessage {
     // TODO:
 
     private _voice_id: string; // telegram voice id
@@ -259,7 +257,7 @@ export class VoiceMessage extends GeneralMessage {
     }
 }
 
-export class VideoMessage extends GeneralMessage {
+export class VideoMessage extends GenericMessage {
     // TODO:
 
     private _video_id: string; // telegram video id
@@ -276,7 +274,7 @@ export class VideoMessage extends GeneralMessage {
 
 }
 
-export class MusicMessage extends GeneralMessage {
+export class MusicMessage extends GenericMessage {
     // TODO:
     private _music_id: string; // telegram music id
 

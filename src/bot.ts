@@ -1,8 +1,9 @@
 import axios from "axios";
-import { GeneralMessage, TelegramCallbackQuery } from "./entities";
-import { InlineKeyboard, Keyboard } from "./keyboards";
-import { InvalidLanguageError, NoSuchTextResource, NoSuchTextResourceError, TelegramApiError } from "./errors";
+import { GenericMessage, TelegramCallbackQuery, TextMessage } from "./entities";
+import { InlineKeyboard, Keyboard, Keyboard } from "./keyboards";
+import { ExistingItemError, InvalidArgumentError, InvalidLanguageError, NoSuchTextResourceError, TelegramApiError } from "./errors";
 import { ParallelJob, Planner, minutesToTimestamp } from "./tools";
+import { User, UserState } from "./models/user";
 
 /**
  *
@@ -76,11 +77,11 @@ export class TelegramBotCore {
     /**
      * Send a message to the bot user by calling the corresponding telegram api.
      *
-     * @param message - Just provide a payagraph GeneralMessage object and the message will be sent.
+     * @param message - Just provide a payagraph GenericMessage object and the message will be sent.
      *
      * @param keyboard [optional] - you can provide a Keyboard or InlineKeyboard alongside your message, so the message will have a keyboard menu with it.
      */
-    async send(message: GeneralMessage, keyboard?: Keyboard | InlineKeyboard) {
+    async send(message: GenericMessage, keyboard?: Keyboard | InlineKeyboard) {
         const url = `${this.apiBaseUrl}/sendMessage`;
         const payload = { chat_id: message.chatId, text: message.text };
         if (keyboard) keyboard.attachToTelegramPayload(payload); // of there is keyboard provided, attach it to payload object
@@ -98,7 +99,7 @@ export class TelegramBotCore {
      * @param keyboard [optional] - you can provide a InlineKeyboard alongside your message; this is mostly used when you have multiple inline keyboard menu,
      * and you want to change keyboard step by step.
      */
-    async edit(modifiedMessage: GeneralMessage, keyboard: InlineKeyboard) {
+    async edit(modifiedMessage: GenericMessage, keyboard: InlineKeyboard) {
         const url = `${this.apiBaseUrl}/editMessageText`;
 
         const payload = {
@@ -130,14 +131,12 @@ export class TelegramBotCore {
  * Also this enum is used for state handler in the bot. By each specific State you have defined in your custom enum extending from this, you can define a method,
  * That will handle that state.
  */
-export enum UserState {
-  None = 0
-}
 
-type GenericHandler = (bot: TelegramBotCore, message: GeneralMessage) => [response: GeneralMessage, markup: Keyboard];
-type CallbackQueryHandler = (bot: TelegramBotCore, message: TelegramCallbackQuery) => [response: GeneralMessage, markup: Keyboard];
-type GenericMiddleware = (bot: TelegramBotCore, message: GeneralMessage) => boolean;
-type GenericModdifier = (message: GeneralMessage) => GeneralMessage;
+
+type GenericHandler = (bot: TelegramBotCore, message: GenericMessage) => [response: GenericMessage, markup: Keyboard];
+type CallbackQueryHandler = (bot: TelegramBotCore, message: TelegramCallbackQuery) => [response: GenericMessage, markup: Keyboard];
+type GenericMiddleware = (bot: TelegramBotCore, message: GenericMessage) => boolean;
+type GenericModdifier = (message: GenericMessage) => GenericMessage;
 
 /**
  *
@@ -162,9 +161,9 @@ export class TelegramBot extends TelegramBotCore {
     protected textResources: {[key:string]: any}
     protected middlewares: GenericMiddleware[] = [];
     protected stateHandlers: {[state: UserState]: GenericHandler} = {};
-    protected commandHandlers: {[command: string]: GenericHandler} = {};
-    protected messageHandlers: {[message: string]: GenericHandler} = {};
-    protected callbackQueryHandlers: {[action: string]: CallbackQueryHandler} = {};
+    protected commandHandlers: {[command?: string]: GenericHandler} = {};
+    protected messageHandlers: {[message?: string | number]: GenericHandler} = {};
+    protected callbackQueryHandlers: {[action: string | number]: CallbackQueryHandler} = {};
     protected responseModdifiers: GenericModdifier[] = []; // moddifies a message before sending to user, a basic example is signing each message before sending
     protected parallels: ParallelJob[] = [];
     // protected app: //express app
@@ -245,7 +244,7 @@ export class TelegramBot extends TelegramBotCore {
         catch(ex) {
             console.error(ex)
         }
-        throw new NoSuchTextResourceError();
+        throw new NoSuchTextResourceError(textKey);
     }
 
     /**
@@ -280,85 +279,136 @@ export class TelegramBot extends TelegramBotCore {
         return null;
     }
     
-    # Main Sections:
-    def add_state_handler(this, handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]], state: UserStates|int):
-        '''Add a handler for special states of user. Depending on the appliance and structure of the bot, it must have its own UserStates enum, that you must add handler for each value of the enum. States are useful when getting multiple inputs for a model, or when special actions must be taken other than normal handlers'''
-        this.state_handlers[state] = handler
-
-    # Main Sections:
-    def add_message_handler(this, handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]], message: dict|list|str = None):
-        '''Add message handlers; Provide specific messages in your desired languages (as dict) to call their provided handlers when that message is sent by user;'''
-        # if your bot has multiple languages then notice that your language keys must match with these keys in message
-        if message:
-            if not isinstance(message, dict) and not isinstance(message, list):
-                this.message_handlers[message] = handler
-                return
-            for lang in message:
-                this.message_handlers[message[lang]] = handler
-            return
-        # TODO: ?if msg_texts if none, then the handler is global
-
-    def add_command_handler(this, handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]], command: str):
-        '''Add a Handler for a message starting with forthslash(/), so if the user sends that command, this handler will run.'''
-        this.command_handlers[f"/{command}" if command[0] != '/' else command] = handler
-
-
-    def add_callback_query_handler(this, handler: Callable[[TelegramBotCore, TelegramCallbackQuery], Union[TelegramMessage, Keyboard|InlineKeyboard]], action: str = None):
-        '''Add handler for each action value of the inline callback keyboards. Each group of inline keyboards have a spacial CallbackQuery.action, that each action value has its special handler '''
-        this.callback_query_hanndlers[action] = handler
-
-    def add_parallel_job(this, job: ParallelJob) -> bool:
-        '''Add new parallel job to the bot; return False if the job Already exists.'''
-        if job not in this.parallels:
-            this.parallels.append(job)
-            return True
-        return False
     
+    /**
+     * Add a handler for special states of user. Depending on the appliance and structure of the bot,
+     *  it must have its own UserStates enum, that you must add handler for each value of the enum.
+     * States are useful when getting multiple inputs for a model, or when special actions must be taken other than normal handlers
+     * @param state - The state which will call this handler
+     * @param handler - The operation that must be done when the user have this state
+     */
+    addStateHandler(state: UserState|number, handler: GenericHandler) {
+        this.stateHandlers[state] = handler;
+    }
 
-    def prepare_new_parallel_job(this, interval: int, functionality: Callable[..., any], *params) -> ParallelJob:
-        '''Create a new ParallelJob object and then add it to bot parallel job list and start it.'''
-        job = ParallelJob(interval, functionality, *params)
-        this.add_parallel_job(job)
+    /**
+     * Add message handlers; Provide specific messages in your desired languages (as dict) to call their provided handlers when that message is sent by user.
+     * @param message - The string which when a user sends will trigger the handler. If a list of strings is passed, then the handler will be matched to each item in that list
+     * message can also be a js object, as 'language_key': 'text', which will link the handler to that text in different languages.
+     * It also can be null or undefined, which in this case this will be the default handler when the user input doesnt match any of message or command handlers so far.
+     * if your bot has multiple languages then notice that your language keys must match with these keys in message
+     * @param handler - obvious!
+     */
+    addMessageHandler(message?: string | string[] | {[lang: string]: string}, handler: GenericHandler) {
+        if(!message || typeof message === 'string' || typeof message === 'number')
+            this.messageHandlers[message.toString()] = handler;
+        else {
+            for(const k of Object.keys(message))
+                this.messageHandlers[message[k]] = handler;
+        }
+    }
+
+    /**
+     * Add a Handler for a message starting with forthslash(/), so if the user sends that command, this handler will run.
+     * @param command - a string or array of string which will trigger a handler when its sent by user to the bot.
+     * @param handler - Obvious!
+     */
+    addCommandHandler(command?: string | number | number[] | string[], handler: GenericHandler) {
+        if(typeof command === 'string' || typeof command === 'number')
+            this.commandHandlers[command[0] !== '/' ? `/${command}` : command] = handler
+        else if(command instanceof Array)
+            for(let i = 0; i < command.length; i++)
+                this.commandHandlers[command[i][0] !== '/' ? `/${command[i]}` : command[i]] = handler;
+        else if(!command)
+            this.commandHandlers[0] = handler;
+        throw new InvalidArgumentError();
+    }
+
+    /**
+     * 
+     * @param action - In this archutecture, each group of inline keyboard markups, are classified with an action value; for example for an inline menu for getting the user age,
+     * developer can create an inline group with an action value of 'setAge'; Each action group will return a value too. for example in setAge action, each value will be the age 
+     * specified in button text.
+     * @param handler - CallbackQueryHandler; This handler a liitle different from other handlers, as it's a CallbackQueryHandler; It will receive a CallbackQuery object.
+     */
+    addCallbackQueryHandler(action?: string | number, handler: CallbackQueryHandler) {
+        this.callbackQueryHandlers[action] = handler
+    }
+
+    /**
+     * This setter will Add new parallel job to the bot; it will raise error if the job already exists.
+     * @param job: Instance of type ParallelJob which is configured what to do independently.
+     */
+    set newJob(job: ParallelJob) {
+        if(this.parallels.includes(job))
+            throw new ExistingItemError('ParallelJob');
+        this.parallels.push(job)
+    }
+    
+    /**
+     * Create a new ParallelJob object and then add it to bot parallel job list and start it.
+     * @param interval - The interval of the parallel job.
+     * @param duty - The function that must run on each interval
+     * @param params - Paramters that the duty method needs.
+     * @returns The ParallelJob that has been created and added to the this.parallels.
+     */
+    prepareNewParallelJob(interval: number, duty: (...params: any[]) => any, ...params: any[]): ParallelJob{        
+        const job = new ParallelJob(interval, duty, ...params)
+        this.newJob = job;
         return job.go()
+    }
 
-    def handle(this, telegram_data: dict):
-        '''determine what course of action to take based on the message sent to the bot by user. First command/message/state handler and middlewares and then call the handle with telegram request data.'''
-        message: TelegramMessage | TelegramCallbackQuery = None
-        user: User = None
-        response: TelegramMessage| TelegramCallbackQuery = None
-        keyboard: Keyboard | InlineKeyboard = None
-        dont_use_main_keyboard: bool = False
-        # TODO: run middlewares first
-        if 'callback_query' in telegram_data:
-            message = TelegramCallbackQuery(telegram_data)
+    /**
+     * determines what course of action needs to be taken based on the message sent to the bot by user, and the handlers that are defined by the dev
+     * First command/message/state handler and middlewares and then call the handle with telegram request data.
+     * @param telegramData 
+     */
+
+    handle(telegramData: {[key: string]: any}) {
+        let message: GenericMessage | TelegramCallbackQuery;
+        let user: User;
+        let response: GenericMessage | TelegramCallbackQuery;
+        let keyboard: Keyboard | InlineKeyboard = null;
+
+        let useAlternateKeyboard: boolean = false; // false means use the main keyboard
+
+        // TODO: run middlewares first
+        
+        if(telegramData?.callback_query) {
+            message = new TelegramCallbackQuery(telegramData);
+            user = message.by;
+            if(this.callbackQueryHandlers[(message as TelegramCallbackQuery).action]) {
+                [response, keyboard] = this.callbackQueryHandlers[(message as TelegramCallbackQuery).action](this, (message as TelegramCallbackQuery))
+            }
+
+        }
+        else {
+            message = new GenericMessage(telegramData)
             user = message.by
-            if message.action in this.callback_query_hanndlers:
-                handler: Callable[[TelegramBotCore, TelegramCallbackQuery], Union[TelegramMessage, Keyboard|InlineKeyboard]]  = this.callback_query_hanndlers[message.action]
-                response, keyboard = handler(this, message)
-        else:
-            message = TelegramMessage(telegram_data)
-            user = message.by
-            handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]] = None
-            if message.text in this.command_handlers:
-                handler = this.command_handlers[message.text]
-                response, keyboard = handler(this, message)
-            else:
-                if user.state != UserStates.NONE and user.state in this.state_handlers:
-                    handler = this.state_handlers[user.state]
-                    response, keyboard = handler(this, message)
+            if(this.commandHandlers[message?.text])
+                [response, keyboard] = this.commandHandlers[message.text](this, message)
+            else {
+                if(user.state !== UserState.None && this.stateHandlers[user?.state]) {
+                    const handler: GenericHandler = this.stateHandlers[user.state];
+                    [response, keyboard] = handler(this, message)
+                }
 
-                if not response:
-                    if message.text in this.message_handlers:
-                        handler = this.message_handlers[message.text]
-                        response, keyboard = handler(this, message)
-        if not response:
-            response = TelegramMessage.Text(target_chat_id=user.chat_id, text=this.text("wrong_command", user.language))
+                if(!response)
+                    if(this.messageHandlers[message?.text])
+                        [response, keyboard] = this.messageHandlers[message.text](this, message)
+                    
+            }
+        }
+        if(!response)
+            response = new TextMessage(user.chatId, this.text("wrongCommand", user.language))
 
-        # if message != response or ((keyboard) and not isinstance(keyboard, InlineKeyboard)):
-        if not response.replace_on_previous or ((keyboard) and not isinstance(keyboard, InlineKeyboard)):
-            if not keyboard and not dont_use_main_keyboard:
-                keyboard = this.main_keyboard(user.language)
+        // if message != response or ((keyboard) and not isinstance(keyboard, InlineKeyboard)):
+        if(!response.isReplacement || ((keyboard) && !(keyboard instanceof InlineKeyboard))) {
+            if(!keyboard && !useAlternateKeyboard)
+                keyboard = this.mainKeyboard(user.language)
             this.send(message=response, keyboard=keyboard)
-        else:
-            this.edit(message, keyboard)
+        }
+        else
+            this.edit(message, keyboard as InlineKeyboard)
+    }
 }

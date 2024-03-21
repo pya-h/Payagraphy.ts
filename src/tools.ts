@@ -27,11 +27,11 @@ export class ParallelJob {
     protected _running: boolean;
     protected _dutyParameters: any[];
     protected _interval: number;
-    protected _duty: Function;
+    protected _duty: (...params: any[]) => any;
     protected _useMiliseconds: boolean = false;
 
     // Define objects from this and use it in TelegramBot, it will does some parallel jobs in the bot by a specific interval [in minutes]
-    constructor(interval: number, duty: Function, ...params: any[]) {
+    constructor(interval: number, duty: (...params: any[]) => any, ...params: any[]) {
         this._interval = interval;
         this._duty = duty;
         this._dutyParameters = params;
