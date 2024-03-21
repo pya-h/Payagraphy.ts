@@ -9,7 +9,7 @@ import {
     TelegramApiError,
 } from "./errors";
 import { ParallelJob, Planner, minutesToTimestamp } from "./tools";
-import { User, UserState } from "./models/user";
+import { User, UserState } from "../models/user";
 import express, { Request, Response, NextFunction } from "express";
 import bodyParser from "body-parser";
 
@@ -145,7 +145,10 @@ export class TelegramBot extends TelegramBotCore {
 
     protected textResources: { [key: string]: any };
     protected middlewares: GenericMiddleware[] = [];
-    protected stateHandlers: Map<UserState, GenericHandler> = new Map<UserState, GenericHandler>();
+    protected stateHandlers: Map<UserState, GenericHandler> = new Map<
+        UserState,
+        GenericHandler
+    >();
     protected commandHandlers: { [command: string]: GenericHandler } = {};
     protected messageHandlers: { [message: string | number]: GenericHandler } =
         {};
@@ -217,21 +220,22 @@ export class TelegramBot extends TelegramBotCore {
 
     configWebhook(webhookBasePath: string = "telegram") {
         this._mainRouter.post(
-            `/${webhookBasePath}/${this.token}`,
+            "/",
+            //`/${webhookBasePath}/${this.token}`,
             async (req: Request, res: Response, next: NextFunction) => {
                 await this.handle(req.body);
                 res.sendStatus(200);
             }
         );
 
-        this._app.use('/', this._mainRouter);
+        this._app.use("/", this._mainRouter);
     }
 
     go(next?: () => any) {
         this._app.listen(this._port, () => {
-            console.log('Bot started listening ...');
-            if(next) next();
-        })
+            console.log(`Bot started listening on ${this._port}...`);
+            if (next) next();
+        });
     }
 
     /**
@@ -272,7 +276,7 @@ export class TelegramBot extends TelegramBotCore {
         )}`;
     }
 
-    getTelegramLink(this): string {
+    getTelegramLink(): string {
         return `https://t.me/${this.username}`;
     }
 
@@ -378,7 +382,7 @@ export class TelegramBot extends TelegramBotCore {
                     command[i][0] !== "/" ? `/${command[i]}` : command[i]
                 ] = handler;
         else if (!command) this.commandHandlers[0] = handler;
-        throw new InvalidArgumentError();
+        else throw new InvalidArgumentError();
     }
 
     /**
@@ -453,14 +457,15 @@ export class TelegramBot extends TelegramBotCore {
         } else {
             message = new GenericMessage(telegramData);
             user = message.by;
-            if (this.commandHandlers[message?.text])
+            if (this.commandHandlers[message?.text]) {
                 [response, keyboard] = this.commandHandlers[message.text](
                     this,
                     message
                 );
-            else {
+            
+            } else {
                 if (
-                    user.state !== UserState.None &&
+                    user?.state !== UserState.None &&
                     this.stateHandlers[user?.state]
                 ) {
                     const handler: GenericHandler =
@@ -488,7 +493,7 @@ export class TelegramBot extends TelegramBotCore {
         ) {
             if (!keyboard && !useAlternateKeyboard)
                 keyboard = this.mainKeyboard(user.language);
-            await this.send((message = response), (keyboard = keyboard));
+            await this.send(response, keyboard);
         } else await this.edit(message, keyboard as InlineKeyboard);
     }
 }

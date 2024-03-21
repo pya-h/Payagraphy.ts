@@ -1,4 +1,4 @@
-import { TelegramKeyboardnPattern } from "./types";
+import { TelegramKeyboardPattern } from "./types";
 
 export class InlineButton {
   protected _text: string;
@@ -193,7 +193,7 @@ export class InlineKeyboard extends Keyboard {
     };
   }
 
-  static Arrange(buttons: TelegramKeyboardnPattern[], callbackAction: string) {
+  static Arrange(buttons: TelegramKeyboardPattern[], callbackAction: string) {
     const keys = Array(Math.ceil(buttons.length / 5))
       .fill(0)
       .map((_, i: number) =>

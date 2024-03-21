@@ -3,7 +3,7 @@
 // from enum import Enum
 // from tools.mathematix import force_cast
 
-import { User } from "./models/user";
+import { User } from "../models/user";
 
 enum ChatType {
     User = "user",

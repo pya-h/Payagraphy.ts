@@ -1,4 +1,4 @@
-import { InlineKeyboard, InlineButton } from "./src/keyboards";
+import { InlineKeyboard, InlineButton } from "./src/engine/keyboards";
 
 ((...x: (number[] | number)[]) => {
     console.log(x);
