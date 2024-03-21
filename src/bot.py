@@ -12,6 +12,7 @@ from flask import Flask, request, jsonify
 from payagraph.tools import ParallelJob
 
 
+
 class TelegramBotCore:
     ''' Main and the very base of a telegram bot; with no helper method or handler; Can be used to create bots without using handler funcionalities; user state management, message and command check and all other stuffs are on developer. handle function has no use in this mode of bot development.'''
     def __init__(self, token: str, username: str, host_url: str, text_resources: dict, _main_keyboard: Dict[str, Keyboard]|Keyboard = None) -> None:
