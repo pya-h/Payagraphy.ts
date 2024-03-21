@@ -1,8 +1,8 @@
 import axios from "axios";
 import { GeneralMessage, TelegramCallbackQuery } from "./entities";
 import { InlineKeyboard, Keyboard } from "./keyboards";
-import { InvalidLanguageError, TelegramApiError } from "./errors";
-import { ParallelJob } from "./tools";
+import { InvalidLanguageError, NoSuchTextResource, NoSuchTextResourceError, TelegramApiError } from "./errors";
+import { ParallelJob, Planner, minutesToTimestamp } from "./tools";
 
 /**
  *
@@ -158,7 +158,7 @@ type GenericModdifier = (message: GeneralMessage) => GeneralMessage;
  * @param textResources - This is the text reource repository, where our bot tries to read messages and send to user; This is the preferred way of sending message,
  * That allows devs to define their messages in different languages, and the bot will choose the key-specified message from this repo, according to each user language.
  */
-class TelegramBot extends TelegramBotCore {
+export class TelegramBot extends TelegramBotCore {
     protected textResources: {[key:string]: any}
     protected middlewares: GenericMiddleware[] = [];
     protected stateHandlers: {[state: UserState]: GenericHandler} = {};
@@ -168,91 +168,117 @@ class TelegramBot extends TelegramBotCore {
     protected responseModdifiers: GenericModdifier[] = []; // moddifies a message before sending to user, a basic example is signing each message before sending
     protected parallels: ParallelJob[] = [];
     // protected app: //express app
-    // protected clock: Planner
+    protected clock: Planner;
 
     constructor(token: string, username?: string, hostUrl?: string, textResources?: {[key:string]: any}, mainKeyboard?: {[key: string]: Keyboard} | Keyboard) {
 
       super(token, username, hostUrl, mainKeyboard)
       this.textResources = textResources;
 
-      this.clock = None // add Planner from tools.py
       ### Flask App configs ###
       this.app: Flask = Flask(__name__)
 
     }
 
-    def config_webhook(this, webhook_path = '/'):
-        # **Telegram hook route**
-        @this.app.route(webhook_path, methods=['POST'])
-        def main():
-            # code below must be add to middlewares
-            '''if not user.has_vip_privileges():
-                order = Order(buyer=user, months_counts=2)  # change this
-                gateway = NowpaymentsGateway(buyer_chat_id=message.chat_id, order=order, callback_url=f'{bot.host_url}/verify', on_success_url=bot.get_telegram_link())
-                response = TelegramMessage.Text(message.chat_id, text=gateway.get_payment_link())
-                bot.send(message=response)
-
-                ### TEMP
-                hint = TelegramMessage.Text(target_chat_id=user.chat_id, text=bot.text("select_channel", user.language))
-                bot.send(hint)
-                user.change_state(UserStates.SELECT_CHANNEL)
-
-                 return jsonify({'status': 'ok'})'''
-            this.handle(request.json)
-            return jsonify({'status': 'ok'})
+    configWebhook(webhookPath = '/') {
+        // @this.app.route(webhookPath, methods=['POST'])
+        // def main()
+        //     this.handle(request.json)
+        //     return jsonify({'status': 'ok'})
+    }
         
-    def go(this, debug=True):
-        this.app.run(debug=debug)
+    go(debug=true) {
+        // this.app.run(debug=debug)
+    }
 
-    def start_clock(this):
-        '''Start the clock and handle(/run if needed) parallel jobs. As parallel jobs are optional, the clock is not running from start of the bot. it starts by direct demand of developer or user.'''
-        this.clock = Planner(1.0, this.ticktock)
+    
+    /**
+        Start the clock and handle(/run if needed) parallel jobs.
+        As parallel jobs are optional, the clock is not running from start of the bot. it starts by direct demand of developer or user.
+    */
+    startClock() {
+        this.clock = new Planner(1.0, this.ticktock)
         this.clock.start()
+    }
 
-    def stop_clock(this):
-        '''Stop bot clock and all parallel jobs.'''
+    /**
+        Stop bot clock and all parallel jobs.
+    */
+    stopClock() {
         this.clock.stop()
+    }
+    /**
+        Runs every 1 minutes, and checks if there's any parallel jobs and is it time to perform them by interval or not.
+    */
+    ticktock() {
+        const now = Date.now();
+        for(const job of this.parallels)
+            if(job.shouldRun())
+                job.do();
+    }
 
-    def ticktock(this):
-        '''Runs every 1 minutes, and checks if there's any parallel jobs and is it time to perform them by interval or not'''
-        now = time() // 60
-        print('tick tocked')
+    /**
+     * Bot being awake time, if the clock has not been stopped ofcourse
+     * @param this 
+     * @returns string: the string indicating the uptime
+     */
+    getUptime(this): string {
+        if(!this.clock || !(this.clock instanceof Planner))
+            throw new Error('This method must be run after starting the bot clock!');
+        return `The bot's uptime is: ${minutesToTimestamp(this.clock.minutesRunning())}`;
+    }
 
-        for job in this.parallels:
-            if (job.running) and (now - job.last_call_minutes >= job.interval):
-                job.do()
+    getTelegramLink(this): string {
+        return `https://t.me/${this.username}`
+    }
 
-    def get_uptime(this) -> str:
-        '''Bot being awake time, if the clock has not been stopped ofcourse'''
-        return f'The bot\'s uptime is: {minutes_to_timestamp(this.clock.minutes_running())}'
+    /**
+     * resource function: get an specific text from the texts_resources json loaded into bot object
+     * @param textKey - the key of the desired text (specified in json.)
+     * @param [language='fa'] 
+     */
 
-    def get_telegram_link(this) -> str:
-        return f'https://t.me/{this.username}'
+    text(textKey: string, language: string = 'fa'): string {
+        try {
+            return this.textResources[textKey][language]
+        }
+        catch(ex) {
+            console.error(ex)
+        }
+        throw new NoSuchTextResourceError();
+    }
 
-    def text(this, text_key: str, language: str = 'fa') -> str:  # short for gettext
-        '''resource function: get an specific text from the texts_resources json loaded into bot object'''
-        try:
-            return this.text_resources[text_key][language]
-        except:
-            pass
-        return "پاسخ نامعلوم" if language == 'fa' else "Unknown response"
+    /**
+     * resource function: get an specific keyword(words that when sent to the bot will run a special function) from the texts resources json loaded into bot object
+     * @param keywordName - the name of the keyword specified in json file.
+     * @param language - user language
+     */
+    keyword(keywordName: string, language?: string): {[key: string]: string}|string {
+        try {
+            const keywords = this.textResources['keywords'];
+            return !language ? keywords[keywordName] : keywords[keywordName][language]
+        }
+        catch(ex) {
+            console.error(ex);
+        }
+        return null;
+    }
 
-    def keyword(this, keyword_name: str, language: str = None) -> dict|str :
-        '''resource function: get an specific keyword(words that when sent to the bot will run a special function) from the texts_resources json loaded into bot object'''
-        try:
-            keywords = this.text_resources['keywords']
-            return keywords[keyword_name] if not language else keywords[keyword_name][language]
-        except:
-            pass
-        return None
+    /**
+     * 
+     * @param command - return a specific command defined in json text resource file.
+     * @returns string - the command text that was expected
+     */
+    cmd(command: string):string {
+        try {
 
-    def cmd(this, command: str) -> str :
-        '''resource function: get an specific command(english keywords starting with '/' that will run a special function) from the texts_resources json loaded into bot object'''
-        try:
-            return this.text_resources['commands'][command]    
-        except:
-            pass
-        return None
+            return this.textResources['commands'][command]    
+        }
+        catch(ex) {
+            console.error(ex);
+        }
+        return null;
+    }
     
     # Main Sections:
     def add_state_handler(this, handler: Callable[[TelegramBotCore, TelegramMessage], Union[TelegramMessage, Keyboard|InlineKeyboard]], state: UserStates|int):

@@ -4,6 +4,12 @@ export class InvalidLanguageError extends Error {
   }
 }
 
+export class NoSuchTextResourceError extends Error {
+  constructor() {
+    super("No such text has been found with this key!");
+  }
+}
+
 export class TelegramApiError extends Error {
   constructor(
     url: string,
