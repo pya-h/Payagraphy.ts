@@ -1,28 +1,28 @@
 import { TelegramKeyboardPattern } from "./types";
 
-export class InlineButton {
+export class GlassButton {
   protected _text: string;
   protected _callbackData?: string | { [key: string]: number | string };
   protected _url?: string;
   protected _singleValue?: string | number | boolean;
 
-  protected _type: InlineButtonType;
+  protected _type: GlassButtonType;
 
   // Inline kyeboard items
-  constructor(text: string, data: InlineButtonData) {
+  constructor(text: string, data: GlassButtonData) {
     this._text = text;
     // From the fields below only one must be passed, otherwise it will consider it first as callback_data, then url, then ...
     this.data = data;
   }
 
-  set data(data: InlineButtonData) {
+  set data(data: GlassButtonData) {
     if (
       typeof data === "string" ||
       typeof data === "number" ||
       typeof data === "boolean"
     ) {
       this._singleValue = data;
-      this._type = InlineButtonType.SingleValue;
+      this._type = GlassButtonType.SingleValue;
     } else {
       const dataKeys: string[] = Object.keys(data);
       if (+dataKeys?.length !== 1)
@@ -31,18 +31,18 @@ export class InlineButton {
         );
       switch (dataKeys[0]) {
         case "callbackData":
-          this._type = InlineButtonType.Callback;
+          this._type = GlassButtonType.Callback;
           this._callbackData = data.callbackData;
           break;
         case "url":
-          this._type = InlineButtonType.URL;
+          this._type = GlassButtonType.URL;
           this._url = data.url;
           break;
         case "getContact":
-          this._type = InlineButtonType.GetContact;
+          this._type = GlassButtonType.GetContact;
           break;
         case "getLocation":
-          this._type = InlineButtonType.GetLocation;
+          this._type = GlassButtonType.GetLocation;
           break;
         default:
           throw new Error(
@@ -52,8 +52,8 @@ export class InlineButton {
     }
   }
 
-  setData(data: InlineButtonData): InlineButton {
-    // this is just like the .data setter, but it returns the object itself, it can be used for serial calls on InlineButton objects.
+  setData(data: GlassButtonData): GlassButton {
+    // this is just like the .data setter, but it returns the object itself, it can be used for serial calls on GlassButton objects.
     this.data = data;
     return this;
   }
@@ -62,37 +62,37 @@ export class InlineButton {
     return this._text;
   }
 
-  get type(): InlineButtonType {
+  get type(): GlassButtonType {
     return this._type;
   }
 
   get asTelegramObject() {
     switch (this.type) {
-      case InlineButtonType.Callback:
+      case GlassButtonType.Callback:
         return {
           text: this.text,
           callback_data: JSON.stringify(this._callbackData),
         };
-      case InlineButtonType.URL:
+      case GlassButtonType.URL:
         return { text: this.text, url: this._url };
-      case InlineButtonType.GetContact:
+      case GlassButtonType.GetContact:
         return { text: this.text, request_contact: true };
-      case InlineButtonType.GetLocation:
+      case GlassButtonType.GetLocation:
         return { text: this.text, request_location: true };
-      case InlineButtonType.SingleValue:
+      case GlassButtonType.SingleValue:
         return { text: this.text, callback_data: this._singleValue };
     }
   }
 }
 
 export class Keyboard {
-  protected _keys: (string | InlineButton)[][];
+  protected _keys: (string | GlassButton)[][];
   private _isOneTime: boolean;
   private _resized: boolean;
 
-  constructor(...rows: (string | InlineButton | (string | InlineButton)[])[]) {
+  constructor(...rows: (string | GlassButton | (string | GlassButton)[])[]) {
     this._keys = rows.map(
-      (row: string | InlineButton | (string | InlineButton)[]) =>
+      (row: string | GlassButton | (string | GlassButton)[]) =>
         row instanceof Array ? row : [row]
     );
     this._isOneTime = false;
@@ -128,20 +128,20 @@ export class Keyboard {
   }
 }
 
-export type StandardInlineButtonData = {
+export type StandardGlassButtonData = {
   callbackData?: string | { [key: string]: number | string };
   url?: string;
   getLocation?: boolean;
   getContact?: boolean;
 };
 
-export type InlineButtonData =
-  | StandardInlineButtonData
+export type GlassButtonData =
+  | StandardGlassButtonData
   | string
   | number
   | boolean;
 
-export enum InlineButtonType {
+export enum GlassButtonType {
   Callback = 1,
   URL = 2,
   GetContact = 3,
@@ -151,27 +151,27 @@ export enum InlineButtonType {
 
 export class InlineKeyboard extends Keyboard {
   // Telegram Inline keyboard implementation, to make it easy for adding inline keyboards to your messages
-  constructor(...rows: (InlineButton | InlineButton[])[]) {
+  constructor(...rows: (GlassButton | GlassButton[])[]) {
     super(...rows);
   }
 
   static MakeButtonStandard(
-    button: InlineButton | { [key: string]: any } | string | number
-  ): InlineButton {
+    button: GlassButton | { [key: string]: any } | string | number
+  ): GlassButton {
     // try everything you can to extract a acceptable keyboard out of this :)))
     try {
-      if (button instanceof InlineButton) return button;
+      if (button instanceof GlassButton) return button;
       if (typeof button === "object" && button && !Array.isArray(button)) {
         const { text } = button;
         delete button.text;
-        return new InlineButton(text, {
+        return new GlassButton(text, {
           callbackData: button.callback_data ?? button.callbackData,
           url: button.url,
           getContact: button.request_contact ?? button.getContact,
           getLocation: button.request_location ?? button.getLocation,
         });
       }
-      return new InlineButton(button.toString(), button.toString());
+      return new GlassButton(button.toString(), button.toString());
     } catch (ex) {
       throw new Error("Wrong button data " + ex);
     }
@@ -187,7 +187,7 @@ export class InlineKeyboard extends Keyboard {
     return {
       inline_keyboard: this._keys.map((row) =>
         (Array.isArray(row) ? row : [row]).map(
-          (col) => col instanceof InlineButton ? col.asTelegramObject : InlineKeyboard.MakeButtonStandard(col).asTelegramObject
+          (col) => col instanceof GlassButton ? col.asTelegramObject : InlineKeyboard.MakeButtonStandard(col).asTelegramObject
         )
       ),
     };
@@ -199,7 +199,7 @@ export class InlineKeyboard extends Keyboard {
       .map((_, i: number) =>
         buttons.slice(i * 5, (i + 1) * 5).map(
           (btn) =>
-            new InlineButton(btn.title, {
+            new GlassButton(btn.title, {
               callbackData: { a: callbackAction, v: btn.value },
             })
         )

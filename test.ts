@@ -1,4 +1,4 @@
-import { InlineKeyboard, InlineButton } from "./src/engine/keyboards";
+import { InlineKeyboard, GlassButton } from "./src/engine/keyboards";
 
 ((...x: (number[] | number)[]) => {
     console.log(x);
