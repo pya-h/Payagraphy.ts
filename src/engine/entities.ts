@@ -3,7 +3,7 @@
 // from enum import Enum
 // from tools.mathematix import force_cast
 
-import { User } from "../models/user";
+import { User, UserLanguage, UserState } from "../models/user";
 
 enum ChatType {
     User = "user",
@@ -94,6 +94,7 @@ export class GenericMessage {
         this._is_replacement = false;
         if(data.messageId)
             this._messageId = data.messageId;
+        this._by = {chatId: this.chatId, language:  UserLanguage.Fa, id: this.chatId, state: UserState.None}
     }
 
     get id(): number {

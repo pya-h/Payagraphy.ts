@@ -61,9 +61,13 @@ export class TelegramBotCore {
         const payload = { chat_id: message.chatId, text: message.text };
         if (keyboard) keyboard.attachToTelegramPayload(payload); // of there is keyboard provided, attach it to payload object
 
-        const { status, data } = await axios.post(url, JSON.stringify(payload));
+        const { status, data } = await axios.post(
+            url,
+            JSON.stringify(payload),
+            { headers: { "Content-Type": "application/json" } }
+        );
         if (status !== 200)
-            throw new TelegramApiError(url, status, data.text, message.chatId);
+            throw new TelegramApiError(url, status, data?.text, message.chatId);
         return data;
     }
 
@@ -178,7 +182,11 @@ export class TelegramBot extends TelegramBotCore {
         this._mainKeyboard = mainKeyboard;
 
         this.textResources = textResources;
-
+        if(!this.textResources) {
+            this.textResources = {
+                wrongCommand: "No such command!"
+            }
+        }
         this._app = express();
         this._mainRouter = express.Router();
         this._app.use(bodyParser.json());
@@ -194,7 +202,8 @@ export class TelegramBot extends TelegramBotCore {
         @param userLanguage - if provided keyboard is language based, this param can be used to get the keybaord in specified language
             values must be the key specified for language names: such as 'en', 'fa', etc
     */
-    mainKeyboard(userLanguage?: string): Keyboard {
+    mainKeyboard(userLanguage?: string): Keyboard | null {
+        if (!this._mainKeyboard) return null;
         if (this._mainKeyboard instanceof Keyboard) return this._mainKeyboard;
 
         if (this._mainKeyboard instanceof Object)
@@ -223,8 +232,13 @@ export class TelegramBot extends TelegramBotCore {
             "/",
             //`/${webhookBasePath}/${this.token}`,
             async (req: Request, res: Response, next: NextFunction) => {
-                await this.handle(req.body);
-                res.sendStatus(200);
+                try {
+                    if (req && req.body) await this.handle(req.body);
+                    res.sendStatus(200);
+                } catch (ex) {
+                    console.log(ex);
+                    res.sendStatus(400);
+                }
             }
         );
 
@@ -288,7 +302,7 @@ export class TelegramBot extends TelegramBotCore {
 
     text(textKey: string, language: string = "fa"): string {
         try {
-            return this.textResources[textKey][language];
+            return this.textResources[textKey][language] ?? this.textResources[textKey];
         } catch (ex) {
             console.error(ex);
         }
@@ -462,7 +476,6 @@ export class TelegramBot extends TelegramBotCore {
                     this,
                     message
                 );
-            
             } else {
                 if (
                     user?.state !== UserState.None &&
