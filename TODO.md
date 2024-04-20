@@ -20,9 +20,9 @@
     * Implement Longpolling mode.
 
 
-# Challenges
+# Planner Challenges
 
-# Checkout the Planner performance in cpanel passenger_wsgi.py app. If yes, find a solution.
+     * Checkout the Planner performance in cpanel passenger_wsgi.py app. If yes, find a solution.
 
-# Use cron instead of Interval for planner. Is there a more efficient way?
+     * use cron instead of Interval for planner. Is there a more efficient way?
         
