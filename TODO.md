@@ -16,4 +16,10 @@
         6. getChatMember
         7. sendChatAction [?]
         8. etc
+
+# Checkout the Planner performance in cpanel passenger_wsgi.py app.
+
+# Use cron instead of Interval for planning.
+
+# Implement Longpolling mode.
         
