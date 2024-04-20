@@ -17,9 +17,12 @@
         7. sendChatAction [?]
         8. etc
 
-# Checkout the Planner performance in cpanel passenger_wsgi.py app.
+    * Implement Longpolling mode.
 
-# Use cron instead of Interval for planning.
 
-# Implement Longpolling mode.
+# Challenges
+
+# Checkout the Planner performance in cpanel passenger_wsgi.py app. If yes, find a solution.
+
+# Use cron instead of Interval for planner. Is there a more efficient way?
         
