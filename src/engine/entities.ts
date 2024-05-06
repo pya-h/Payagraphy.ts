@@ -90,7 +90,7 @@ export class GenericMessage {
 
         this._by = null; // Edit This: VIPAccount.Get(this._msg?.chat?.id)
         this._chat_id = +this._msg?.chat?.id
-        this._forward_origin = this._msg.forward_origin ? new ForwardOrigin(this._msg.forward_origin) : null;
+        this._forward_origin = this._msg?.forward_origin ? new ForwardOrigin(this._msg.forward_origin) : null;
         this._is_replacement = false;
         if(data.messageId)
             this._messageId = data.messageId;
@@ -214,7 +214,8 @@ export class TextMessage extends GenericMessage {
                 text,
                 chat: {
                     id: targetChatId
-                }
+                },
+                chatId: targetChatId,
             }
         });
         this._by = null; // TODO: use options.senderId, find user from database model

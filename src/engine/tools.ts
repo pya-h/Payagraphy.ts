@@ -38,7 +38,6 @@ export class ParallelJob {
         this._lastAchievment = null;
         this._lastDutyTime = 0;
         this._running = false;
-        this._dutyParameters = params;
     }
 
     /**
@@ -56,8 +55,8 @@ export class ParallelJob {
         return this;
     }
 
-    do(): void {
-        this._lastAchievment = this._duty(...this._dutyParameters);
+    async do(): Promise<void> {
+        this._lastAchievment = await this._duty(...this._dutyParameters);
         this._lastDutyTime = now(this._useMiliseconds);
     }
 
@@ -106,7 +105,8 @@ export class Planner {
 
     start() {
         if (this.isRunning) return;
-        this.timerId = setInterval(this.execute, this.interval * 1000);
+        // TODO: Make async using crons
+        this.timerId = setInterval(() => this.execute(), this.interval * 1000);
         this.startedAt = Date.now();
         this.isRunning = true;
     }
@@ -118,8 +118,8 @@ export class Planner {
         this.timerId = 0;
     }
 
-    execute() {
-        this.lastCallResult = this.action(...this.params);
+    async execute() {
+        this.lastCallResult = this.params ? await this.action(...this.params) : await this.action();
     }
 
     minutesRunning(): number {

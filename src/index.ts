@@ -1,10 +1,17 @@
 import { TelegramBot } from "./engine/bot";
-import { GenericMessage } from "./engine/entities";
+import { GenericMessage, TextMessage } from "./engine/entities";
 
-const bot = new TelegramBot('6821919435:AAFB8h1oFiAXn8hxHRimv3mNhmJMlKk_6JU', '@temp_the_next_bot', 'https://0154-65-109-211-162.ngrok-free.app');
+const bot = new TelegramBot('token', '@botusername', 'host url');
+let i = 0;
+bot.prepareNewParallelJob(90, async(bot: TelegramBot) => {
+    const msg = new TextMessage(-1002073799554, `job test #${i++}`);
+    await bot.send(msg);
+}, bot);
 
+bot.startClock();
 bot.addCommandHandler('start', (bot: TelegramBot, message: GenericMessage) => {
     return [message, null];
 })
 bot.configWebhook();
+
 bot.go();

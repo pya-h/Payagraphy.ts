@@ -182,7 +182,7 @@ export class TelegramBot extends TelegramBotCore {
         this._mainKeyboard = mainKeyboard;
 
         this.textResources = textResources;
-        if(!this.textResources) {
+        if (!this.textResources) {
             this.textResources = {
                 wrongCommand: "No such command!"
             }
@@ -236,7 +236,7 @@ export class TelegramBot extends TelegramBotCore {
                     if (req && req.body) await this.handle(req.body);
                     res.sendStatus(200);
                 } catch (ex) {
-                    console.log(ex);
+                    // console.log(ex);
                     res.sendStatus(400);
                 }
             }
@@ -257,7 +257,7 @@ export class TelegramBot extends TelegramBotCore {
         As parallel jobs are optional, the clock is not running from start of the bot. it starts by direct demand of developer or user.
     */
     startClock() {
-        this.clock = new Planner(1.0, this.ticktock);
+        this.clock = new Planner(1.0, () => this.ticktock());
         this.clock.start();
     }
 
@@ -272,7 +272,16 @@ export class TelegramBot extends TelegramBotCore {
     */
     ticktock() {
         const now = Date.now();
-        for (const job of this.parallels) if (job.shouldRun()) job.do();
+        if (!this.parallels)
+            return;
+
+        (async () => {
+            for (const job of this.parallels) {
+                if (job.shouldRun())
+                     await job.do();
+            }
+        })();
+
     }
 
     /**
@@ -455,13 +464,12 @@ export class TelegramBot extends TelegramBotCore {
         let useAlternateKeyboard: boolean = false; // false means use the main keyboard
 
         // TODO: run middlewares first
-
         if (telegramData?.callback_query) {
             message = new TelegramCallbackQuery(telegramData);
             user = message.by;
             if (
                 this.callbackQueryHandlers[
-                    (message as TelegramCallbackQuery).action
+                (message as TelegramCallbackQuery).action
                 ]
             ) {
                 [response, keyboard] = this.callbackQueryHandlers[
